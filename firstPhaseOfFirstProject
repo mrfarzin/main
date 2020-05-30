@@ -1,0 +1,243 @@
+package com.company;
+
+import java.util.Arrays;
+
+class BigNumber
+{
+    public static final BigNumber ZERO = new BigNumber(0);
+    public static final BigNumber ONE = new BigNumber(1);
+
+    private byte[] digits;
+
+    private String clean(String s)
+    {
+        s = s.trim();
+        StringBuilder digits = new StringBuilder(s.length());
+        boolean leadingZero = true;
+        for (int i = 0 ; i < s.length() ; i++)
+        {
+            if(s.charAt(i) != '0')
+                leadingZero = false;
+            if(leadingZero == true && s.charAt(i) == '0')
+                continue;
+            digits.append(s.charAt(i));
+        }
+        return digits.toString();
+    }
+
+
+    public BigNumber(String str)
+    {
+        str = clean(str);
+        for (int i = 0; i < str.length(); i++)
+        {
+            if(str.charAt(i) < '0' || str.charAt(i) > '9')
+                throw new IllegalArgumentException("Bad input:" + str);
+        }
+        digits = new byte[str.length()];
+        for (int i = 0; i < digits.length; i++)
+        {
+            int ch = str.charAt(str.length() - i - 1) - 48;
+            digits[i] = (byte)ch;
+        }
+    }
+
+
+    public BigNumber(long val)
+    {
+        String valStr = Long.toString(val);
+        digits = new byte[valStr.length()];
+        for (int i = 0; i < digits.length; i++)
+        {
+            int ch = valStr.charAt(valStr.length() - i - 1) - 48;
+            digits[i] = (byte)ch;
+        }
+    }
+
+
+    public BigNumber() {
+        this(0);
+    }
+
+
+    public static BigNumber fromLong(long val) {
+        return new BigNumber(val);
+    }
+
+
+    public static BigNumber fromString(String val) {
+        return new BigNumber(val);
+    }
+
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder(digits.length);
+        for (int i = digits.length-1 ; i >= 0 ; i--)
+            builder.append(digits[i]);
+        return builder.toString();
+    }
+
+
+    int length() {
+        return digits.length;
+    }
+
+
+    BigNumber add(BigNumber a)
+    {
+        StringBuilder builder = new StringBuilder();
+        int carrier = 0;
+        for (int i = 0 ; i < Math.max(length(), a.length()) ; i++)
+        {
+            byte aDigit = i<a.length() ? a.digits[i]:0;
+            byte thisDigit = i<length() ? digits[i]:0;
+            int result = aDigit + thisDigit + carrier;
+            builder.append(result % 10);
+            carrier = result / 10;
+        }
+        if(carrier>0)
+            builder.append(carrier);
+        return BigNumber.fromString(builder.reverse().toString());
+    }
+
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false; // ham jens naboodan kelas
+        BigNumber number = (BigNumber) o;
+        return Arrays.equals(digits, number.digits);
+    }
+
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(digits);
+    }
+
+
+    BigNumber subtract(BigNumber a)
+    {
+        if(a.isGreater(this))
+            throw new IllegalArgumentException("The parameter is bigger than this number.");
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0 ; i < a.length() ; i++)
+        {
+            int toAppend;
+            int j = i+1;
+            if(digits[i] < a.digits[i])
+            {
+                digits[i] += 10;
+                if(digits[j] == 0)
+                {
+                    while(digits[j] == 0)
+                    {
+                        digits[j] += 9;
+                        j++;
+                    }
+                    digits[j]--;
+                }
+                else
+                    digits[j]--;
+                toAppend = digits[i] - a.digits[i];
+                builder.append(toAppend);
+            }
+            else
+            {
+                toAppend = digits[i] - a.digits[i];
+                builder.append(toAppend);
+            }
+        }
+        for (int i = a.length() ; i < length() ; i++)
+            builder.append(digits[i]);
+        return BigNumber.fromString(builder.reverse().toString());
+    }
+
+
+    BigNumber multiply(BigNumber a)
+    {
+        String aString = new String();
+        aString = a.toString();
+
+        String thisString = new String();
+        thisString = toString();
+
+        char[] chs1 = aString.toCharArray();
+        char[] chs2 = thisString.toCharArray();
+        int n1 = chs1.length, n2 = chs2.length;
+        char[] res = new char[n1 + n2];
+        Arrays.fill(res,'0');
+
+        for (int j = n2 -1 ; j >= 0 ; j--)
+        {
+            for (int i = n1-1 ; i >= 0 ; i--)
+            {
+                int product = (chs1[i] - '0') * (chs2[j] - '0');
+                int tmp = res[i + j +1] - '0' + product;
+                res[i+j+1] = (char)(tmp %10 + '0');
+                res[i+j] = (char) ((res[i+j]-'0' + tmp /10) + '0');
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean seen = false;
+        for (char c: res)
+        {
+            if (c == '0' && !seen)
+                continue;
+            sb.append(c);
+            seen = true;
+        }
+        return BigNumber.fromString(sb.length() == 0 ? "0" : sb.toString());
+    }
+
+
+    BigNumber divide(BigNumber a)
+    {
+        StringBuilder builder = new StringBuilder();
+        BigNumber b = new BigNumber();
+        BigNumber c = new BigNumber(0);
+        BigNumber d = new BigNumber(1);
+        BigNumber e = new BigNumber(0);
+        b = this;
+        do
+        {
+            b = b.subtract(a);
+            c = c.add(d);
+        }while(b.isGreater(a));
+
+        if( !(b.isGreater(e)) )
+            c = c.add(d);
+
+        builder.append(c);
+        return BigNumber.fromString(builder.toString());
+    }
+
+
+    boolean isGreater(BigNumber a)
+    {
+        if(length() > a.length())
+            return true;
+        if(length() < a.length())
+            return false;
+        for (int i = digits.length-1 ; i >= 0 ; i--) // 'for' ra bar aks neveshtim chon age az avval moroor konim barkhi oghat natayej eshtebah khahad dad
+        {
+            if(digits[i] > a.digits[i])
+                return true;
+            if(digits[i] < a.digits[i])
+                return false;
+        }
+        return false;
+    }
+
+
+    public static void main(String[] args)
+    {
+        BigNumber a = BigNumber.fromString("357951");
+        BigNumber b = BigNumber.fromString("654852");
+        BigNumber result = b.multiply(a);
+        System.out.println(result);
+    }
+}
